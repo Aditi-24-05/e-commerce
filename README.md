@@ -24,9 +24,6 @@ A modern, responsive **E-Commerce web application** built to simulate a real-wor
 
 ---
 
-## 📂 Project Structure
-
-
 ## ⚙️ Installation & Setup
 
 1. **Clone the repository**
