@@ -34,7 +34,7 @@ export function ProductCard({
   };
 
   return (
-    <div className="flipkart-card block group relative">
+    <div className="flipkart-card block group relative rounded-xl">
       <Link to={`/product/${id}`}>
         <div className="p-4">
           {/* Product Image */}

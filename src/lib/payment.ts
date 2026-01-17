@@ -20,7 +20,7 @@ export interface PaymentResult {
     message?: string;
 }
 
-export async function processPayment(amount: number, state: PaymentState): Promise<PaymentResult> {
+export async function processPayment( state: PaymentState): Promise<PaymentResult> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 2000));
 

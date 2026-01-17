@@ -2,7 +2,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { getOrders } from "@/lib/supabase";
-import { Package, ChevronRight, Loader2, ShoppingBag } from "lucide-react";
+import { Package, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Orders() {

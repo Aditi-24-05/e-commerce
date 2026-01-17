@@ -101,7 +101,7 @@ export default function Checkout() {
             setIsProcessingPayment(true);
             try {
                 // Process Payment
-                const result = await processPayment(total, paymentState);
+                const result = await processPayment( paymentState);
 
                 if (result.success) {
                     createOrderMutation.mutate({

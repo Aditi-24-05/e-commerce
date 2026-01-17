@@ -1,4 +1,3 @@
-
 import { createClient } from "@supabase/supabase-js";
 import Fuse from "fuse.js";
 
@@ -16,7 +15,7 @@ export interface Product {
     images: string[];
     rating?: number;
     reviews_count?: number;
-    category?: any; // Can be string or object depending on join
+    category?: any;
     category_id?: string;
     description?: string;
     stock?: number;
@@ -38,7 +37,51 @@ export interface CartItem {
     product?: Product;
 }
 
-// Local storage fallback for cart since we don't have auth enforced yet
+// Category synonyms and related terms
+const categorySynonyms: Record<string, string[]> = {
+    'mobiles': ['phone', 'smartphone', 'mobile', 'cell', 'iphone', 'android', 'samsung', 'oneplus', 'xiaomi', 'realme', 'oppo', 'vivo'],
+    'electronics': ['gadget', 'device', 'electronic', 'tech', 'technology'],
+    'fashion': ['clothing', 'clothes', 'wear', 'apparel', 'dress', 'shirt', 'pant', 'jeans', 'tshirt', 't-shirt'],
+    'home': ['furniture', 'decor', 'decoration', 'household', 'kitchen', 'bedroom', 'living'],
+    'appliances': ['appliance', 'washing', 'fridge', 'refrigerator', 'ac', 'microwave', 'oven'],
+    'books': ['book', 'novel', 'textbook', 'reading', 'literature'],
+    'toys': ['toy', 'game', 'kids', 'children', 'play'],
+    'sports': ['sport', 'fitness', 'gym', 'exercise', 'athletic'],
+    'beauty': ['cosmetic', 'makeup', 'skincare', 'beauty', 'grooming'],
+    'groceries': ['grocery', 'food', 'snack', 'beverage', 'drink']
+};
+
+// Function to find matching categories based on search query
+function getMatchingCategories(query: string, categories: Category[]): string[] {
+    const lowerQuery = query.toLowerCase().trim();
+    const matchingCategoryIds: string[] = [];
+
+    categories.forEach(category => {
+        const categorySlug = category.slug.toLowerCase();
+        const categoryName = category.name.toLowerCase();
+        
+        // Direct match with category name or slug
+        if (categoryName.includes(lowerQuery) || lowerQuery.includes(categoryName) ||
+            categorySlug.includes(lowerQuery) || lowerQuery.includes(categorySlug)) {
+            matchingCategoryIds.push(category.id);
+            return;
+        }
+
+        // Check synonyms
+        const synonyms = categorySynonyms[categorySlug] || [];
+        const matches = synonyms.some(synonym => 
+            lowerQuery.includes(synonym) || synonym.includes(lowerQuery)
+        );
+        
+        if (matches) {
+            matchingCategoryIds.push(category.id);
+        }
+    });
+
+    return matchingCategoryIds;
+}
+
+// Local storage fallback for cart
 const CART_STORAGE_KEY = 'flipkart_cart';
 
 function getCartFromStorage(): CartItem[] {
@@ -77,6 +120,10 @@ export async function getProducts(categorySlug: string = 'all', searchQuery: str
         .from('products')
         .select('*, category:categories(*)');
 
+    // First, get all categories for search matching
+    const categories = await getCategories();
+
+    // Apply category filter if specified in URL
     if (categorySlug && categorySlug !== 'all') {
         const { data: catData } = await supabase.from('categories').select('id').eq('slug', categorySlug).single();
         if (catData) {
@@ -96,26 +143,38 @@ export async function getProducts(categorySlug: string = 'all', searchQuery: str
         category: item.category
     })) as Product[];
 
+    // Enhanced search with category matching
     if (searchQuery) {
-        const fuseOptions = {
-            keys: [
-                { name: 'name', weight: 0.7 },
-                { name: 'category.name', weight: 0.5 },
-                { name: 'description', weight: 0.2 },
-                { name: 'highlights', weight: 0.1 }
-            ],
-            threshold: 0.25, // Stricter
-            location: 0,
-            distance: 20, // Penalize matches far from the start of the string
-            includeScore: true,
-            ignoreLocation: false,
-            useExtendedSearch: true,
-            minMatchCharLength: 3
-        };
+        // Check if search query matches any category
+        const matchingCategoryIds = getMatchingCategories(searchQuery, categories);
+        
+        // If search matches specific categories, show ALL products from those categories
+        if (matchingCategoryIds.length > 0) {
+            result = result.filter(product => 
+                matchingCategoryIds.includes(product.category_id || '')
+            );
+            // Don't apply fuzzy search, return all products from matched categories
+        } else {
+            // If no category match, do regular fuzzy search across all products
+            const fuseOptions = {
+                keys: [
+                    { name: 'name', weight: 0.6 },
+                    { name: 'category.name', weight: 0.3 },
+                    { name: 'description', weight: 0.1 }
+                ],
+                threshold: 0.4,
+                location: 0,
+                distance: 100,
+                includeScore: true,
+                ignoreLocation: false,
+                useExtendedSearch: false,
+                minMatchCharLength: 2
+            };
 
-        const fuse = new Fuse(result, fuseOptions);
-        const searchResults = fuse.search(searchQuery);
-        result = searchResults.map(res => res.item);
+            const fuse = new Fuse(result, fuseOptions);
+            const searchResults = fuse.search(searchQuery);
+            result = searchResults.map(res => res.item);
+        }
     }
 
     return result;
@@ -135,14 +194,12 @@ export async function getProduct(id: string): Promise<Product | null> {
     return data;
 }
 
-// Cart functions remain local for now as discussed in plan
+// Cart functions
 export async function getCartItems(): Promise<CartItem[]> {
-    await new Promise(resolve => setTimeout(resolve, 200)); // Simulate async
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     const cart = getCartFromStorage();
 
-    // Attach product details from DB for each cart item
-    // This is N+1 but okay for logic simplicity right now, or we can use `in` query
     const cartWithProducts = await Promise.all(cart.map(async (item) => {
         const product = await getProduct(item.product_id);
         return {
@@ -196,7 +253,6 @@ export async function removeFromCart(itemId: string): Promise<CartItem[]> {
 
     return getCartItems();
 }
-
 
 export async function clearCart(): Promise<void> {
     saveCartToStorage([]);
@@ -286,18 +342,14 @@ export async function createOrder(
     shippingAddress: ShippingAddress,
     paymentDetails: { method: string, status: string, transactionId?: string }
 ): Promise<Order> {
-    const cart = getCartItemsFromStorage(); // Helper to access storage directly
+    const cart = getCartItemsFromStorage();
 
     if (cart.length === 0) throw new Error("Cart is empty");
 
-    // Calculate totals
-    const cartItems = await getCartItems(); // Get full items with product details
+    const cartItems = await getCartItems();
     const subtotal = cartItems.reduce((sum, item) => sum + (Number(item.product?.price || 0) * item.quantity), 0);
     const shipping_cost = subtotal > 500 ? 0 : 40;
     const total = subtotal + shipping_cost;
-
-    // Create Order object directly in logic if we don't have DB tables, 
-    // BUT user wants Supabase. So we insert into 'orders' table.
 
     const orderNumber = 'ORD-' + Date.now();
 
@@ -327,7 +379,6 @@ export async function createOrder(
         throw new Error('Failed to create order');
     }
 
-    // Create Order Items
     const orderItemsData = cartItems.map(item => ({
         order_id: order.id,
         product_id: item.product_id,
@@ -343,10 +394,8 @@ export async function createOrder(
 
     if (itemsError) {
         console.error('Error creating order items:', itemsError);
-        // Should ideally rollback order here but for simple clone we skip
     }
 
-    // Clear cart
     clearCart();
 
     return order;
@@ -379,8 +428,6 @@ export async function getOrders(): Promise<Order[]> {
     return data || [];
 }
 
-// Helper to get raw storage items needed for createOrder before async expansion
 function getCartItemsFromStorage(): CartItem[] {
     return getCartFromStorage();
 }
-

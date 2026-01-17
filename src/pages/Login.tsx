@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -29,11 +28,9 @@ export default function Login() {
                     password,
                 });
                 if (error) throw error;
-                toast({
-                    title: "Account created!",
-                    description: "You can now sign in with your credentials.",
-                });
-                setIsSignUp(false);
+                
+                // Show email confirmation dialog after sign up
+                setShowConfirmDialog(true);
             } else {
                 const { error } = await supabase.auth.signInWithPassword({
                     email,
@@ -44,8 +41,8 @@ export default function Login() {
                     title: "Welcome back!",
                     description: "You have successfully signed in.",
                 });
-                // Show email confirmation dialog instead of navigating immediately
-                setShowConfirmDialog(true);
+                // Navigate directly to home after successful login
+                navigate("/");
             }
         } catch (error: any) {
             toast({
@@ -120,7 +117,7 @@ export default function Login() {
                 onOpenChange={(open) => {
                     setShowConfirmDialog(open);
                     if (!open) {
-                        // Navigate to home when dialog is closed
+                        // Navigate to home when dialog is closed after sign up
                         navigate("/");
                     }
                 }}

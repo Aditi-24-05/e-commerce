@@ -104,7 +104,7 @@ export default function ProductDetail() {
                             <div className="hidden lg:flex gap-4 mt-6">
                                 <Button
                                     onClick={handleAddToCart}
-                                    disabled={isCartLoading || product.stock === 0}
+                                    disabled={isCartLoading || !product.stock || product.stock === 0}
                                     className={cn(
                                         "flex-1 flipkart-btn-cart h-14 text-base gap-2",
                                         isBuyLoading && "pointer-events-none"
@@ -119,7 +119,7 @@ export default function ProductDetail() {
                                 </Button>
                                 <Button
                                     onClick={handleBuyNow}
-                                    disabled={isBuyLoading || product.stock === 0}
+                                    disabled={isBuyLoading || !product.stock || product.stock === 0}
                                     className={cn(
                                         "flex-1 flipkart-btn-buy h-14 text-base gap-2",
                                         isCartLoading && "pointer-events-none"
@@ -195,7 +195,7 @@ export default function ProductDetail() {
                             </div>
 
                             {/* Stock Status */}
-                            {product.stock > 0 ? (
+                            {product.stock !== undefined && product.stock > 0 ? (
                                 <div className="flex items-center gap-2 text-success">
                                     <Check size={18} />
                                     <span className="font-medium">In Stock</span>
@@ -203,9 +203,9 @@ export default function ProductDetail() {
                                         <span className="text-warning text-sm">(Only {product.stock} left)</span>
                                     )}
                                 </div>
-                            ) : (
+                            ) : product.stock === 0 ? (
                                 <p className="text-destructive font-medium">Out of Stock</p>
-                            )}
+                            ) : null}
 
                             {/* Delivery Info */}
                             <div className="flex flex-wrap gap-6 py-4 border-y border-border">
@@ -271,7 +271,7 @@ export default function ProductDetail() {
             <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border p-3 flex gap-3 z-40">
                 <Button
                     onClick={handleAddToCart}
-                    disabled={isCartLoading || product.stock === 0}
+                    disabled={isCartLoading || !product.stock || product.stock === 0}
                     className={cn(
                         "flex-1 flipkart-btn-cart h-12 gap-2",
                         isBuyLoading && "pointer-events-none"
@@ -286,7 +286,7 @@ export default function ProductDetail() {
                 </Button>
                 <Button
                     onClick={handleBuyNow}
-                    disabled={isBuyLoading || product.stock === 0}
+                    disabled={isBuyLoading || !product.stock || product.stock === 0}
                     className={cn(
                         "flex-1 flipkart-btn-buy h-12 gap-2",
                         isCartLoading && "pointer-events-none"

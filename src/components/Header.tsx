@@ -36,7 +36,7 @@ export function Header() {
     <header className="flipkart-header sticky top-0 z-50">
       <div className="container mx-auto">
         {/* Main Header */}
-        <div className="flex items-center gap-4 py-3 px-4">
+        <div className="flex flex-row justify-center items-center gap-4 py-3 px-4">
           {/* Mobile Menu Button */}
           <button
             className="lg:hidden text-primary-foreground"
